@@ -18,7 +18,7 @@
 #ifdef SSD1306_USE_UTF8
 typedef uint16_t utf8_t;
 #endif
-enum resolution_t : uint8_t { SSD1306_128x64, SSD1306_128x32, SSD1306_64x32 };
+enum resolution_t : uint8_t { SSD1306_128x64, SSD1306_128x32, SSD1306_64x48, SSD1306_64x32 };
 
 template<const resolution_t RESOLUTION, const uint8_t ADDR = 0, const int8_t RST_PIN = -1, TwoWire &WIRE = Wire>
 class SSD1306 {
@@ -562,7 +562,7 @@ bool SSD1306<RESOLUTION, ADDR, RST_PIN, WIRE>::begin(bool reset) {
   _startPage = 0;
   reset = sendCommand(0xAE) && // DISPLAYOFF
     sendCommand(0xD5, 0x80) && // SETDISPLAYCLOCKDIV = 0x80
-    sendCommand(0xA8, RESOLUTION == SSD1306_128x64 ? 0x3F : 0x1F) && // SETMULTIPLEX
+    sendCommand(0xA8, RESOLUTION == SSD1306_128x64 ? 0x3F : RESOLUTION == SSD1306_64x48 ? 0x2F : 0x1F) && // SETMULTIPLEX
     sendCommand(0xD3, 0x00) && // SETDISPLAYOFFSET = 0x00
     sendCommand(0x40 | 0) && // SETSTARTLINE (_startPage * 8)
     sendCommand(0x8D, 0x14) && // CHARGEPUMP = 0x14
@@ -572,7 +572,7 @@ bool SSD1306<RESOLUTION, ADDR, RST_PIN, WIRE>::begin(bool reset) {
     sendCommand(0xD9, 0x22) && // SETPRECHARGE = 0x22
     sendCommand(0xDB, RESOLUTION == SSD1306_128x64 ? 0x40 : (RESOLUTION == SSD1306_128x32 ? 0x20 : 0x00)) && // SETVCOMDETECT
     sendCommand(0x20, 0x00) && // MEMORYMODE = HORIZONTAL_ADDRESSING_MODE
-    sendCommand(0x81, RESOLUTION == SSD1306_64x32 ? 0xCF : 0x7F) && // SETCONTRAST
+    sendCommand(0x81, RESOLUTION >= SSD1306_64x48 ? 0xCF : 0x7F) && // SETCONTRAST
     sendCommand(0xA4) && // DISPLAYALLON_RESUME
     sendCommand(0xA6) && // NORMALDISPLAY
     sendCommand(0xAF); // DISPLAYON
@@ -638,12 +638,12 @@ bool SSD1306<RESOLUTION, ADDR, RST_PIN, WIRE>::contrast(uint8_t value) {
 
 template<const resolution_t RESOLUTION, const uint8_t ADDR, const int8_t RST_PIN, TwoWire &WIRE>
 inline uint8_t SSD1306<RESOLUTION, ADDR, RST_PIN, WIRE>::width() const {
-  return RESOLUTION == SSD1306_64x32 ? 64 : 128;
+  return RESOLUTION >= SSD1306_64x48 ? 64 : 128;
 }
 
 template<const resolution_t RESOLUTION, const uint8_t ADDR, const int8_t RST_PIN, TwoWire &WIRE>
 inline uint8_t SSD1306<RESOLUTION, ADDR, RST_PIN, WIRE>::height() const {
-  return RESOLUTION == SSD1306_128x64 ? 64 : 32;
+  return RESOLUTION == SSD1306_128x64 ? 64 : RESOLUTION == SSD1306_64x48 ? 48 : 32;
 }
 
 template<const resolution_t RESOLUTION, const uint8_t ADDR, const int8_t RST_PIN, TwoWire &WIRE>
@@ -815,7 +815,7 @@ template<const resolution_t RESOLUTION, const uint8_t ADDR, const int8_t RST_PIN
 bool SSD1306<RESOLUTION, ADDR, RST_PIN, WIRE>::selectArea(uint8_t x1, uint8_t y1, uint8_t x2, uint8_t y2) {
   uint8_t offset;
 
-  if (RESOLUTION == SSD1306_64x32)
+  if (RESOLUTION >= SSD1306_64x48)
     offset = 0x20;
   else
     offset = 0;
